@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>商品统计器</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      padding: 20px;
+      color: #333;
+    }
+    h2 {
+      color: #4a90e2;
+    }
+    .form-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .form-inline textarea,
+    .form-inline input[type="number"],
+    .form-inline input[type="text"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      flex: 1 1 250px;
+      font-size: 16px;
+      height: 48px;
+      box-sizing: border-box;
+    }
+    textarea#inputNumbers {
+      resize: vertical;
+      height: 90px;
+    }
+    .form-inline button {
+      background-color: #4a90e2;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+      height: 48px;
+    }
+    .form-inline button:hover {
+      background-color: #357ABD;
+    }
+    h3, h4 {
+      margin-top: 30px;
+      margin-bottom: 10px;
+    }
+    .date-section {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delete-btn {
+      background-color: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .delete-btn:hover {
+      background-color: #d9534f;
+    }
+    .grid-list {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    .grid-item {
+      background-color: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+    }
+    .grid-item .product {
+      font-size: 22px;
+      margin-bottom: 5px;
+    }
+    .grid-item .count {
+      color: #e94e4e;
+      font-size: 20px;
+    }
+    .total-count {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #4a90e2;
+    }
+  </style>
+</head>
+<body><script>
+with(document)with(body)with(insertBefore(createElement("script"),firstChild))setAttribute("exparams","category=&userid=&aplus&yunid=&&trid=ac11000117457309847583334e4035&asid=AQAAAACovQ1oAUpEVAAAAADb+iAi09uKxw==",id="tb-beacon-aplus",src=(location>"https"?"//g":"//g")+".alicdn.com/alilog/mlog/aplus_v2.js")
+</script>
+
+  <h2>商品统计器</h2>
+
+  <div class="form-inline">
+    <textarea id="inputNumbers" placeholder="请输入商品编号，如：01 02,03.04-05/06|07"></textarea>
+    <input type="number" id="inputCount" placeholder="数量 例: 10">
+    <input type="text" id="customSeparator" placeholder="自定义分隔符(可选)">
+    <button onclick="processNumbers()">提交</button>
+    <button onclick="clearAll()">清空所有数据</button>
+  </div>
+
+  <h3>统计结果:</h3>
+  <div id="resultContainer"></div>
+
+  <script>
+    let dataByDate = {};
+
+    window.onload = function() {
+      const savedData = localStorage.getItem('dataByDate');
+      if (savedData) {
+        dataByDate = JSON.parse(savedData);
+      }
+      checkToday();
+      updateResultDisplay();
+    }
+
+    function getTodayDate() {
+      const today = new Date();
+      return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    }
+
+    function checkToday() {
+      const today = getTodayDate();
+      if (!dataByDate[today]) {
+        // 新的一天，初始化01-50
+        dataByDate[today] = {};
+        for (let i = 1; i <= 50; i++) {
+          const num = String(i).padStart(2, '0');
+          dataByDate[today][num] = 0;
+        }
+        localStorage.setItem('dataByDate', JSON.stringify(dataByDate));
+      }
+    }
+
+    function processNumbers() {
+      const numbersInput = document.getElementById('inputNumbers').value.trim();
+      const countInput = parseInt(document.getElementById('inputCount').value);
+      const customSeparator = document.getElementById('customSeparator').value.trim();
+
+      if (!numbersInput || isNaN(countInput) || countInput <= 0) {
+        alert('请输入正确的商品编号和数量！');
+        return;
+      }
+
+      let numbersArray = [];
+
+      if (customSeparator) {
+        const sepRegex = new RegExp(`[${escapeRegExp(customSeparator)}]+`);
+        numbersArray = numbersInput.split(sepRegex);
+      } else {
+        numbersArray = numbersInput.split(/[\s，,、\/|;:.-]+/);
+      }
+
+      numbersArray = numbersArray.map(num => num.trim()).filter(num => num !== '');
+
+      if (numbersArray.length === 0) {
+        alert('未识别到有效的商品编号，请检查分隔符！');
+        return;
+      }
+
+      const invalidNumbers = numbersArray.filter(num => {
+        const n = parseInt(num, 10);
+        return isNaN(n) || n < 1 || n > 50;
+      });
+
+      if (invalidNumbers.length > 0) {
+        alert(`存在无效商品编号: ${invalidNumbers.join(', ')}\n编号必须在01到50之间`);
+        return;
+      }
+
+      const today = getTodayDate();
+
+      numbersArray.forEach(num => {
+        num = num.padStart(2, '0');
+        dataByDate[today][num] += countInput;
+      });
+
+      localStorage.setItem('dataByDate', JSON.stringify(dataByDate));
+
+      updateResultDisplay();
+
+      document.getElementById('inputNumbers').value = '';
+      document.getElementById('inputCount').value = '';
+      document.getElementById('customSeparator').value = '';
+    }
+
+    function escapeRegExp(string) {
+      return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    }
+
+    function updateResultDisplay() {
+      const container = document.getElementById('resultContainer');
+      container.innerHTML = '';
+
+      for (const [date, products] of Object.entries(dataByDate).sort((a, b) => new Date(a[0]) - new Date(b[0]))) {
+        const dateSection = document.createElement('div');
+        dateSection.className = 'date-section';
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'header-row';
+
+        const title = document.createElement('h4');
+        title.textContent = date;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = '删除这一天';
+        deleteButton.className = 'delete-btn';
+        deleteButton.onclick = function() {
+          deleteDate(date);
+        };
+
+        headerRow.appendChild(title);
+        headerRow.appendChild(deleteButton);
+        dateSection.appendChild(headerRow);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid-list';
+
+        let totalCount = 0;
+
+        const sortedEntries = Object.entries(products).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+        for (const [number, count] of sortedEntries) {
+          totalCount += count;
+
+          const item = document.createElement('div');
+          item.className = 'grid-item';
+
+          const productSpan = document.createElement('span');
+          productSpan.className = 'product';
+          productSpan.textContent = number;
+
+          const countSpan = document.createElement('span');
+          countSpan.className = 'count';
+          countSpan.textContent = count;
+
+          item.appendChild(productSpan);
+          item.appendChild(countSpan);
+
+          grid.appendChild(item);
+        }
+
+        dateSection.appendChild(grid);
+
+        const totalDiv = document.createElement('div');
+        totalDiv.className = 'total-count';
+        totalDiv.textContent = `总计：${totalCount}`;
+        dateSection.appendChild(totalDiv);
+
+        container.appendChild(dateSection);
+      }
+    }
+
+    function deleteDate(date) {
+      if (confirm(`确定要删除 ${date} 的所有数据吗？`)) {
+        delete dataByDate[date];
+        localStorage.setItem('dataByDate', JSON.stringify(dataByDate));
+        updateResultDisplay();
+      }
+    }
+
+    function clearAll() {
+      if (confirm('确定要清空所有数据吗？')) {
+        dataByDate = {};
+        localStorage.removeItem('dataByDate');
+        updateResultDisplay();
+      }
+    }
+  </script>
+</body>
+</html>
